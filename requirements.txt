@@ -1,8 +1,11 @@
+# requirements.txt
 fastapi
 uvicorn
-torch
 monai
-pillow
+torch
+torchvision
 opencv-python-headless
+pillow
 numpy
 scikit-learn
+python-multipart
