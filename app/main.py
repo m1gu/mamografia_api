@@ -1,4 +1,5 @@
 # app/main.py
+# API para clasificar y segmentar mamografías
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 from app.model_loader import load_models, predict_clasificacion, predict_segmentacion
