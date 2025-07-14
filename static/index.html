@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico Mamografía</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background-color: #f5f5f5;
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 2rem;
+        }
+        input[type="file"] {
+            margin-bottom: 1rem;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 2rem;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            margin: 1rem 0;
+        }
+        .result {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>Diagnóstico de Mamografía</h1>
+    <input type="file" id="fileInput" accept="image/*">
+    <br>
+    <button onclick="enviarImagen()">Enviar</button>
+
+    <div class="result" id="result" style="display:none;">
+        <h2>Resultado:</h2>
+        <p><strong>Clasificación:</strong> <span id="etiqueta"></span></p>
+        <p><strong>Probabilidad:</strong> <span id="probabilidad"></span></p>
+        <h3>Imagen original:</h3>
+        <img id="imagenOriginal" src="">
+        <h3>Segmentación:</h3>
+        <img id="imagenSegmentacion" src="">
+    </div>
+
+    <script>
+        async function enviarImagen() {
+            const input = document.getElementById('fileInput');
+            if (!input.files.length) {
+                alert('Por favor sube una imagen.');
+                return;
+            }
+
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch('http://127.0.0.1:8000/predict/', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!res.ok) {
+                alert('Error al enviar la imagen.');
+                return;
+            }
+
+            const data = await res.json();
+            document.getElementById('etiqueta').innerText = data.etiqueta;
+            document.getElementById('probabilidad').innerText = (data.probabilidad * 100).toFixed(2) + '%';
+            document.getElementById('imagenOriginal').src = URL.createObjectURL(file);
+
+            if (data.segmentacion) {
+                document.getElementById('imagenSegmentacion').src = 'data:image/png;base64,' + data.segmentacion;
+            } else {
+                document.getElementById('imagenSegmentacion').src = '';
+            }
+
+            document.getElementById('result').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

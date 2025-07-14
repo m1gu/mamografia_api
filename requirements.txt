@@ -1,11 +1,14 @@
-# requirements.txt
 fastapi
 uvicorn
 monai
 torch
 torchvision
+segmentation-models-pytorch
 opencv-python-headless
 pillow
 numpy
 scikit-learn
+scikit-image
 python-multipart
+requests
+huggingface-hub

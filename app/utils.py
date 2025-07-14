@@ -1,44 +1,94 @@
-# app/utils.py
 import cv2
 import numpy as np
 import torch
 from torchvision import transforms
 from PIL import Image
-from pathlib import Path
 import base64
-import io
+from ultralytics import YOLO
+
+# Cargar modelo YOLO una sola vez
+model_yolo = YOLO("yolov8n.pt").to("cpu")
 
 def preprocess_image(image_path: str):
     """
-    Carga una imagen, la convierte a escala de grises, la hace cuadrada con padding negro
-    y la transforma a tensor.
+    Carga imagen, convierte a escala de grises, la redimensiona a 256x256,
+    y la convierte a tensor [1, 256, 256] en rango [0, 1].
     """
-    img = Image.open(image_path).convert("L")  # Escala de grises (1 canal)
-    w, h = img.size
-    size = max(w, h)
-
-    # Crear nueva imagen cuadrada con fondo negro
-    new_img = Image.new("L", (size, size))
-    new_img.paste(img, ((size - w) // 2, (size - h) // 2))
-
-    # Convertir a tensor [C, H, W] y escalar a [0, 1]
-    tensor = transforms.ToTensor()(new_img)
+    img = Image.open(image_path).convert("L")
+    img_resized = img.resize((256, 256), Image.BILINEAR)
+    tensor = transforms.ToTensor()(img_resized).float()
     return tensor
 
-def postprocess_segmentacion(image_path, mask, threshold=0.5):
+def postprocess_segmentacion(image_tensor, mask, threshold=0.9):
     """
-    Superpone una máscara binaria como contorno rojo sobre la imagen original.
-    Devuelve la imagen codificada en base64 (opcional para mostrar en frontend).
+    Postprocesa la máscara segmentada para visualización con contorno y overlay.
+    Devuelve la imagen como string base64 codificada en PNG.
     """
-    img = cv2.imread(str(image_path))
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    mask_bin = (mask > threshold).astype(np.uint8)
+    if mask.max() == 0:
+        return None  # Sin predicción válida
 
-    # Encontrar contornos
-    contours, _ = cv2.findContours(mask_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    cv2.drawContours(img, contours, -1, (255, 0, 0), 2)  # Contorno rojo
+    # Paso 1: Suavizado
+    mask_filtered = cv2.bilateralFilter(mask.astype(np.float32), 15, 75, 75)
 
-    # Codificar como base64 para retornar por API
-    _, buffer = cv2.imencode(".png", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-    b64 = base64.b64encode(buffer).decode("utf-8")
-    return b64
+    # Paso 2: Umbralización adaptativa
+    binary = cv2.threshold((mask_filtered * 255).astype(np.uint8), 0, 255,
+                           cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+
+    # Paso 3: Detección de contorno principal
+    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    main_contour = max(contours, key=cv2.contourArea, default=None)
+
+    final_mask = np.zeros_like(binary)
+    if main_contour is not None and cv2.contourArea(main_contour) > 50:
+        # Aproximación poligonal y relleno
+        epsilon = 0.001 * cv2.arcLength(main_contour, True)
+        approx = cv2.approxPolyDP(main_contour, epsilon, True)
+        cv2.drawContours(final_mask, [approx], -1, 255, thickness=cv2.FILLED)
+
+        # Cierre morfológico
+        kernel = np.ones((7, 7), np.uint8)
+        final_mask = cv2.morphologyEx(final_mask, cv2.MORPH_CLOSE, kernel)
+
+    # Visualización
+    img = image_tensor.squeeze().cpu().numpy()
+    img = (img * 255).astype(np.uint8)
+    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+
+    if main_contour is not None:
+        cv2.drawContours(img, [approx], -1, (0, 255, 0), 2)
+        overlay = img.copy()
+        cv2.drawContours(overlay, [approx], -1, (0, 0, 255), thickness=cv2.FILLED)
+        img = cv2.addWeighted(img, 0.8, overlay, 0.2, 0)
+
+    _, buffer = cv2.imencode(".png", img)
+    return base64.b64encode(buffer).decode("utf-8")
+
+def detect_roi(image_tensor, padding=20):
+    """
+    Detecta ROI usando YOLO sobre una versión RGB de la imagen 1 canal.
+    Retorna coordenadas [x1, y1, x2, y2].
+    """
+    img = image_tensor.squeeze().cpu().numpy()
+    if image_tensor.shape[0] != 1:
+        raise ValueError("Se esperaba un tensor de 1 canal")
+
+    img_rgb = np.stack([img] * 3, axis=-1)  # [H, W, 3]
+    img_rgb = (img_rgb * 255).astype(np.uint8)
+
+    results = model_yolo(img_rgb)
+    boxes = results[0].boxes.xyxy.cpu().numpy()
+
+    if boxes.shape[0] == 0:
+        # No hay detecciones, usar imagen completa
+        h, w = img.shape
+        return np.array([0, 0, w, h])
+
+    x1, y1, x2, y2 = boxes[0].astype(int)
+
+    # Aplicar padding limitado por bordes
+    x1 = max(0, x1 - padding)
+    y1 = max(0, y1 - padding)
+    x2 = min(img.shape[1], x2 + padding)
+    y2 = min(img.shape[0], y2 + padding)
+
+    return np.array([x1, y1, x2, y2])
