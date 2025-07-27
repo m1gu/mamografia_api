@@ -12,10 +12,7 @@ from ultralytics.nn.modules.conv import Conv
 
 # Cargar modelo YOLO una sola vez
 #model_yolo = YOLO("yolov8n.pt").to("cpu")
-def load_yolo_model():
-    safe_classes = [DetectionModel, Sequential, Conv]
-    with torch.serialization.safe_globals(safe_classes):
-        return YOLO("https://huggingface.co/ultralytics/yolov8/resolve/main/yolov8n.pt").to("cpu")
+
 
 model_yolo = None
 
@@ -78,6 +75,12 @@ def detect_roi(image_tensor, target_size=256):
     Detecta una región de interés (ROI) centrada dentro del bounding box de YOLO,
     con tamaño fijo (por ejemplo 256x256).
     """
+
+    safe_classes = [DetectionModel, Sequential, Conv]
+    with torch.serialization.safe_globals(safe_classes):
+        model_yolo = YOLO("https://huggingface.co/ultralytics/yolov8/resolve/main/yolov8n.pt").to("cpu")
+
+
     img = image_tensor.squeeze().cpu().numpy()
     img_rgb = np.stack([img] * 3, axis=-1)  # Convertir a RGB
     img_rgb = (img_rgb * 255).astype(np.uint8)
