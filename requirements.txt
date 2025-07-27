@@ -12,3 +12,4 @@ scikit-image
 python-multipart
 requests
 huggingface-hub
+ultralytics==8.1.17
