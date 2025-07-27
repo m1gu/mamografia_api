@@ -6,10 +6,11 @@ from torchvision import transforms
 from PIL import Image
 import base64
 from ultralytics import YOLO
+from ultralytics.nn.tasks import DetectionModel
 
 # Cargar modelo YOLO una sola vez
 #model_yolo = YOLO("yolov8n.pt").to("cpu")
-with torch.serialization.safe_globals():
+with torch.serialization.safe_globals([DetectionModel]):
     model_yolo = YOLO("https://huggingface.co/ultralytics/yolov8/resolve/main/yolov8n.pt").to("cpu")
 
 
