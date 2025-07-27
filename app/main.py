@@ -8,8 +8,17 @@ from uuid import uuid4
 import shutil
 import torch
 import numpy as np
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="API Diagnóstico Mamografía")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Carpeta temporal
 UPLOAD_DIR = Path("uploads")
