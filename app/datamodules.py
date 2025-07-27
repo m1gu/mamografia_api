@@ -1,10 +1,10 @@
 from monai.transforms import (
     Compose, LoadImaged, EnsureChannelFirstd,
-    Resized, ScaleIntensityd, EnsureTyped,
-    CropForegroundd, Lambdad
+    Resized, ScaleIntensityd, EnsureTyped
 )
 import torch
 import numpy as np
+import cv2
 
 SIZE = (256, 256)
 

@@ -33,7 +33,7 @@ def unet_pretrained():
 
 def load_models():
     clasificador_path = descargar_modelo("clasificador.pth")
-    segmentador_path = descargar_modelo("segmentador.pth")
+    segmentador_path = descargar_modelo("segmentador_full_11.pth")
 
     # Clasificador
     model_cls = densenet121_m(in_channels=1, num_classes=2)
@@ -65,7 +65,9 @@ def predict_clasificacion(model, transform, image_path):
     return label, float(max(prob))
 
 def predict_segmentacion(model, transform, image_tensor):
-    return sliding_window_segmentation(model, image_tensor)
+    data = {"image": image_tensor}
+    tensor = transform(data)["image"]  # aplicar las transforms de MONAI
+    return sliding_window_segmentation(model, tensor)
 
 def sliding_window_segmentation(model, image_tensor, patch_size=256, stride=64, device="cpu"):
     model.eval()

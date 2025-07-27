@@ -19,7 +19,7 @@ def preprocess_image(image_path: str):
     tensor = transforms.ToTensor()(img_resized).float()
     return tensor
 
-def postprocess_segmentacion(image_tensor, mask, threshold=0.9):
+def postprocess_segmentacion(image_tensor, mask, threshold=0.5):
     """
     Postprocesa la máscara segmentada para visualización con contorno y overlay.
     Devuelve la imagen como string base64 codificada en PNG.
@@ -63,32 +63,35 @@ def postprocess_segmentacion(image_tensor, mask, threshold=0.9):
     _, buffer = cv2.imencode(".png", img)
     return base64.b64encode(buffer).decode("utf-8")
 
-def detect_roi(image_tensor, padding=20):
+def detect_roi(image_tensor, target_size=256):
     """
-    Detecta ROI usando YOLO sobre una versión RGB de la imagen 1 canal.
-    Retorna coordenadas [x1, y1, x2, y2].
+    Detecta una región de interés (ROI) centrada dentro del bounding box de YOLO,
+    con tamaño fijo (por ejemplo 256x256).
     """
     img = image_tensor.squeeze().cpu().numpy()
-    if image_tensor.shape[0] != 1:
-        raise ValueError("Se esperaba un tensor de 1 canal")
-
-    img_rgb = np.stack([img] * 3, axis=-1)  # [H, W, 3]
+    img_rgb = np.stack([img] * 3, axis=-1)  # Convertir a RGB
     img_rgb = (img_rgb * 255).astype(np.uint8)
 
     results = model_yolo(img_rgb)
     boxes = results[0].boxes.xyxy.cpu().numpy()
 
+    h_img, w_img = img.shape
+
     if boxes.shape[0] == 0:
-        # No hay detecciones, usar imagen completa
-        h, w = img.shape
-        return np.array([0, 0, w, h])
+        # Si no detecta nada, usar el centro de la imagen
+        center_x, center_y = w_img // 2, h_img // 2
+    else:
+        x1, y1, x2, y2 = boxes[0].astype(int)
+        center_x = (x1 + x2) // 2
+        center_y = (y1 + y2) // 2
 
-    x1, y1, x2, y2 = boxes[0].astype(int)
+    # Calcular nuevo ROI centrado de tamaño target_size
+    half_size = target_size // 2
+    x1_new = max(0, center_x - half_size)
+    y1_new = max(0, center_y - half_size)
+    x2_new = min(w_img, center_x + half_size)
+    y2_new = min(h_img, center_y + half_size)
 
-    # Aplicar padding limitado por bordes
-    x1 = max(0, x1 - padding)
-    y1 = max(0, y1 - padding)
-    x2 = min(img.shape[1], x2 + padding)
-    y2 = min(img.shape[0], y2 + padding)
+    return np.array([x1_new, y1_new, x2_new, y2_new])
 
-    return np.array([x1, y1, x2, y2])
+

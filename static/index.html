@@ -3,23 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diagnóstico Mamografía</title>
+    <title>SISTEMA DE DIAGNÓSTICO BASADO EN INTELIGENCIA ARTIFICIAL CON MONAI PARA LA DETECCIÓN DE CÁNCER DE MAMA</title>
     <style>
         body {
-            font-family: sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             margin: 0;
             padding: 2rem;
-            background-color: #f5f5f5;
+            background-color: #f0f2f5;
             text-align: center;
         }
+
         h1 {
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
+            color: #333;
         }
+
         input[type="file"] {
             margin-bottom: 1rem;
         }
+
         button {
-            background-color: #007BFF;
+            background-color: #007bff;
             color: white;
             border: none;
             padding: 0.75rem 1.5rem;
@@ -27,71 +31,177 @@
             border-radius: 5px;
             cursor: pointer;
             margin-bottom: 2rem;
+            transition: background-color 0.3s ease;
         }
-        img {
-            max-width: 100%;
-            height: auto;
-            margin: 1rem 0;
+
+        button:hover {
+            background-color: #0056b3;
         }
+
         .result {
             margin-top: 2rem;
-            padding: 1rem;
+            padding: 1.5rem;
             background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .imagenes-resultados {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .imagen-columna {
+            flex: 1;
+            text-align: center;
+        }
+
+        .imagen-columna img {
+            max-width: 100%;
+            height: auto;
             border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border: 1px solid #ccc;
+        }
+
+        .titulo-imagen {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            display: none;
+        }
+
+        @media (min-width: 768px) {
+            .imagenes-resultados {
+                flex-direction: row;
+                align-items: flex-start;
+            }
+        }
+
+        .loader {
+            display: none;
+            margin-top: 1rem;
+        }
+
+        .loader span {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            margin: 0 2px;
+            background: #007bff;
+            border-radius: 50%;
+            animation: bounce 0.6s infinite alternate;
+        }
+
+        .loader span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loader span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+            to {
+                transform: translateY(-10px);
+            }
+        }
+
+        footer {
+            background-color: #007bff;
+            color: white;
+            text-align: center;
+            padding: 1rem 0;
+            margin-top: 3rem;
+            font-size: 0.95rem;
         }
     </style>
 </head>
 <body>
-    <h1>Diagnóstico de Mamografía</h1>
+    <h1>SISTEMA PARA DETECCIÓN DE CÁNCER DE MAMA CON INTELIGENCIA ARTIFICIAL</h1>
+
     <input type="file" id="fileInput" accept="image/*">
     <br>
     <button onclick="enviarImagen()">Enviar</button>
+
+    <div class="loader" id="loader">
+        <span></span><span></span><span></span>
+    </div>
 
     <div class="result" id="result" style="display:none;">
         <h2>Resultado:</h2>
         <p><strong>Clasificación:</strong> <span id="etiqueta"></span></p>
         <p><strong>Probabilidad:</strong> <span id="probabilidad"></span></p>
-        <h3>Imagen original:</h3>
-        <img id="imagenOriginal" src="">
-        <h3>Segmentación:</h3>
-        <img id="imagenSegmentacion" src="">
+
+        <div class="imagenes-resultados">
+            <div class="imagen-columna">
+                <div class="titulo-imagen" id="tituloOriginal">Imagen original:</div>
+                <img id="imagenOriginal" src="">
+            </div>
+            <div class="imagen-columna">
+                <div class="titulo-imagen" id="tituloSegmentacion">Segmentación:</div>
+                <img id="imagenSegmentacion" src="">
+            </div>
+        </div>
     </div>
+
+    <footer>
+        © 2025 Proyecto de Sistema para detección de cáncer de mama con Inteligencia Artificial - Desarrollado por Miguel Ángel Rodríguez Egües - mrodriguezegues@gmail.com
+    </footer>
 
     <script>
         async function enviarImagen() {
             const input = document.getElementById('fileInput');
+            const loader = document.getElementById('loader');
+            const result = document.getElementById('result');
+            const tituloOriginal = document.getElementById('tituloOriginal');
+            const tituloSegmentacion = document.getElementById('tituloSegmentacion');
+
             if (!input.files.length) {
                 alert('Por favor sube una imagen.');
                 return;
             }
 
+            loader.style.display = 'inline-block';
+            result.style.display = 'none';
+            tituloOriginal.style.display = 'none';
+            tituloSegmentacion.style.display = 'none';
+
             const file = input.files[0];
             const formData = new FormData();
             formData.append('file', file);
 
-            const res = await fetch('http://127.0.0.1:8000/predict/', {
-                method: 'POST',
-                body: formData
-            });
+            try {
+                const res = await fetch('http://127.0.0.1:8000/predict/', {
+                    method: 'POST',
+                    body: formData
+                });
 
-            if (!res.ok) {
-                alert('Error al enviar la imagen.');
-                return;
+                if (!res.ok) throw new Error('Error al enviar la imagen.');
+
+                const data = await res.json();
+                document.getElementById('etiqueta').innerText = data.etiqueta;
+                document.getElementById('probabilidad').innerText = (data.probabilidad * 100).toFixed(2) + '%';
+                document.getElementById('imagenOriginal').src = URL.createObjectURL(file);
+                tituloOriginal.style.display = 'block';
+
+                if (data.segmentacion) {
+                    document.getElementById('imagenSegmentacion').src = 'data:image/png;base64,' + data.segmentacion;
+                    tituloSegmentacion.style.display = 'block';
+                } else {
+                    document.getElementById('imagenSegmentacion').src = '';
+                }
+
+                result.style.display = 'block';
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                loader.style.display = 'none';
             }
-
-            const data = await res.json();
-            document.getElementById('etiqueta').innerText = data.etiqueta;
-            document.getElementById('probabilidad').innerText = (data.probabilidad * 100).toFixed(2) + '%';
-            document.getElementById('imagenOriginal').src = URL.createObjectURL(file);
-
-            if (data.segmentacion) {
-                document.getElementById('imagenSegmentacion').src = 'data:image/png;base64,' + data.segmentacion;
-            } else {
-                document.getElementById('imagenSegmentacion').src = '';
-            }
-
-            document.getElementById('result').style.display = 'block';
         }
     </script>
 </body>

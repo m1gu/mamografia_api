@@ -2,7 +2,7 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from app.model_loader import load_models, predict_clasificacion, predict_segmentacion
-from app.utils import model_yolo, preprocess_image, postprocess_segmentacion, detect_roi
+from app.utils import preprocess_image, postprocess_segmentacion, detect_roi
 from pathlib import Path
 from uuid import uuid4
 import shutil
@@ -34,7 +34,7 @@ async def predict(file: UploadFile = File(...)):
     segmentada = None
     if etiqueta in ["Benigno", "Maligno"]:
         try:
-            roi = detect_roi(img_tensor)  # usa model_yolo interno
+            roi = detect_roi(img_tensor) 
             x1, y1, x2, y2 = map(int, roi)
             print(f"ROI detectada: {roi}")
 
