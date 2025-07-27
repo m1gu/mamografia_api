@@ -2,7 +2,7 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from app.model_loader import load_models, predict_clasificacion, predict_segmentacion
-from app.utils import preprocess_image, postprocess_segmentacion, detect_roi
+from app.utils import preprocess_image, postprocess_segmentacion, detect_roi, load_yolo_model
 from pathlib import Path
 from uuid import uuid4
 import shutil
@@ -10,6 +10,8 @@ import torch
 import numpy as np
 
 app = FastAPI(title="API Diagnóstico Mamografía")
+
+model_yolo = load_yolo_model()
 
 # Cargar modelos al iniciar la API
 model_cls, model_seg, transforms_cls, transforms_seg = load_models()

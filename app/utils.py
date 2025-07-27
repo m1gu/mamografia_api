@@ -8,12 +8,16 @@ from PIL import Image
 import base64
 from ultralytics import YOLO
 from ultralytics.nn.tasks import DetectionModel
+from ultralytics.nn.modules.conv import Conv
 
 # Cargar modelo YOLO una sola vez
 #model_yolo = YOLO("yolov8n.pt").to("cpu")
-with torch.serialization.safe_globals([DetectionModel, Sequential]):
-    model_yolo = YOLO("https://huggingface.co/ultralytics/yolov8/resolve/main/yolov8n.pt").to("cpu")
+def load_yolo_model():
+    safe_classes = [DetectionModel, Sequential, Conv]
+    with torch.serialization.safe_globals(safe_classes):
+        return YOLO("https://huggingface.co/ultralytics/yolov8/resolve/main/yolov8n.pt").to("cpu")
 
+model_yolo = None
 
 def preprocess_image(image_path: str):
     """
