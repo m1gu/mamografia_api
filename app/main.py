@@ -11,10 +11,6 @@ import numpy as np
 
 app = FastAPI(title="API Diagnóstico Mamografía")
 
-
-# Cargar modelos al iniciar la API
-model_cls, model_seg, transforms_cls, transforms_seg = load_models()
-
 # Carpeta temporal
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -27,6 +23,9 @@ async def predict(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
 
     try:
+        #  Cargar modelos solo cuando se necesiten
+        model_cls, model_seg, transforms_cls, transforms_seg = load_models()
+
         img_tensor = preprocess_image(str(temp_path))
         etiqueta, prob = predict_clasificacion(model_cls, transforms_cls, str(temp_path))
     except Exception as e:
@@ -35,7 +34,7 @@ async def predict(file: UploadFile = File(...)):
     segmentada = None
     if etiqueta in ["Benigno", "Maligno"]:
         try:
-            roi = detect_roi(img_tensor) 
+            roi = detect_roi(img_tensor)
             x1, y1, x2, y2 = map(int, roi)
             print(f"ROI detectada: {roi}")
 
