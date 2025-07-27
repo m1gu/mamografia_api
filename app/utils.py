@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import torch
 import torch.serialization
+from torch.nn import Sequential
 from torchvision import transforms
 from PIL import Image
 import base64
@@ -10,7 +11,7 @@ from ultralytics.nn.tasks import DetectionModel
 
 # Cargar modelo YOLO una sola vez
 #model_yolo = YOLO("yolov8n.pt").to("cpu")
-with torch.serialization.safe_globals([DetectionModel]):
+with torch.serialization.safe_globals([DetectionModel, Sequential]):
     model_yolo = YOLO("https://huggingface.co/ultralytics/yolov8/resolve/main/yolov8n.pt").to("cpu")
 
 
