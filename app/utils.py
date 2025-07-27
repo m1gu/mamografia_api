@@ -7,7 +7,9 @@ import base64
 from ultralytics import YOLO
 
 # Cargar modelo YOLO una sola vez
-model_yolo = YOLO("yolov8n.pt").to("cpu")
+#model_yolo = YOLO("yolov8n.pt").to("cpu")
+model_yolo = YOLO("https://huggingface.co/ultralytics/yolov8/resolve/main/yolov8n.pt").to("cpu")
+
 
 def preprocess_image(image_path: str):
     """
